@@ -10,7 +10,7 @@ public class WebClientConfig {
     @Bean
     public WebClient webClient() {
         return WebClient.builder()
-                .baseUrl("https://asia.api.riotgames.com") // Riot API 기본 URL 설정
+                .baseUrl("https://asia.api.riotgames.com")
                 .build();
     }
 }
