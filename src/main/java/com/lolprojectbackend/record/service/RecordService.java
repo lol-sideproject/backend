@@ -5,6 +5,7 @@ import com.lolprojectbackend.record.dto.ChampionMasteryListDto;
 import com.lolprojectbackend.record.dto.InGameInfoDto;
 import com.lolprojectbackend.record.dto.RankDto;
 import com.lolprojectbackend.record.dto.SummonerDto;
+import com.lolprojectbackend.record.dto.SummonerInfoDto;
 import com.lolprojectbackend.record.dto.SummonerRankDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,30 +73,6 @@ public class RecordService {
         return new ChampionMasteryListDto(masteryList);
     }
 
-
-    /**
-     * PUUID로 encryptedSummonerId 조회
-     */
-    public String getSummonerIdByPuuid(String puuid) {
-        String url = "https://kr.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/" + puuid;
-
-        // HTTP 헤더 설정 (API Key 추가)
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("X-Riot-Token", riotApiKey); // API 키를 헤더에 추가
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        // Riot API 요청 및 응답 처리
-        ResponseEntity<SummonerRankDto> response = restTemplate.exchange(url, HttpMethod.GET, entity, SummonerRankDto.class);
-
-        // 응답이 null이면 예외 처리
-        if (response.getBody() == null) {
-            throw new RuntimeException("소환사 정보를 찾을 수 없습니다.");
-        }
-
-        return response.getBody().getId(); // encryptedSummonerId 반환
-    }
-
-
     /**
      * Summoner ID로 랭크 정보 조회
      */
@@ -149,6 +126,30 @@ public class RecordService {
             return null; // 게임 중이 아닐 경우 null 반환
         } catch (HttpStatusCodeException e) {
             log.error("Riot API 호출 오류: {}", e.getMessage());
+            throw new RuntimeException("Riot API 호출 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Riot API를 사용하여 PUUID 기반 Summoner 정보 조회
+     */
+    public SummonerInfoDto getSummonerByPuuid(String puuid) {
+        String url = "https://kr.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/" + puuid;
+
+        // HTTP 헤더 설정 (API Key 추가)
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Riot-Token", riotApiKey);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            // Riot API 요청 및 응답 처리
+            ResponseEntity<SummonerInfoDto> response = restTemplate.exchange(url, HttpMethod.GET, entity, SummonerInfoDto.class);
+            return response.getBody();
+        } catch (HttpClientErrorException.NotFound e) {
+            log.info("Summoner 정보를 찾을 수 없습니다. (404 Not Found) - PUUID: {}", puuid);
+            return null;
+        } catch (HttpClientErrorException e) {
+            log.error("Riot API 호출 중 오류 발생: {}", e.getMessage());
             throw new RuntimeException("Riot API 호출 중 오류 발생: " + e.getMessage());
         }
     }

@@ -4,6 +4,7 @@ import com.lolprojectbackend.record.dto.ChampionMasteryListDto;
 import com.lolprojectbackend.record.dto.InGameInfoDto;
 import com.lolprojectbackend.record.dto.RankDto;
 import com.lolprojectbackend.record.dto.SummonerDto;
+import com.lolprojectbackend.record.dto.SummonerInfoDto;
 import com.lolprojectbackend.record.service.RecordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,11 +38,12 @@ public class RecordController {
     }
 
     /**
-     * PUUID로 encryptedSummonerId 조회 API
+     * PUUID로 Summoner 정보 조회 API
      */
-    @GetMapping("/summonerId/{puuid}")
-    public ResponseEntity<String> getSummonerIdByPuuid(@PathVariable String puuid) {
-        return ResponseEntity.ok(recordService.getSummonerIdByPuuid(puuid));
+    @GetMapping("/summoner/by-puuid/{puuid}")
+    public ResponseEntity<SummonerInfoDto> getSummonerByPuuid(@PathVariable String puuid) {
+        SummonerInfoDto summoner = recordService.getSummonerByPuuid(puuid);
+        return summoner != null ? ResponseEntity.ok(summoner) : ResponseEntity.notFound().build();
     }
 
     /**
@@ -60,5 +62,6 @@ public class RecordController {
         InGameInfoDto inGameInfo = recordService.getInGameInfo(puuid);
         return inGameInfo != null ? ResponseEntity.ok(inGameInfo) : ResponseEntity.notFound().build();
     }
+
 
 }
