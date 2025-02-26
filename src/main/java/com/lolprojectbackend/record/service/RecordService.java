@@ -6,7 +6,9 @@ import com.lolprojectbackend.record.dto.InGameInfoDto;
 import com.lolprojectbackend.record.dto.RankDto;
 import com.lolprojectbackend.record.dto.SummonerDto;
 import com.lolprojectbackend.record.dto.SummonerInfoDto;
-import com.lolprojectbackend.record.dto.SummonerRankDto;
+import com.lolprojectbackend.record.entity.Summoner;
+import com.lolprojectbackend.record.respository.SummonerRepository;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,12 +31,13 @@ import java.util.List;
 public class RecordService {
 
     private final RestTemplate restTemplate;
+    private final SummonerRepository summonerRepository;
 
     @Value("${riot.api.key}")
     private String riotApiKey;
 
     /**
-     * PUUID 조회
+     * PUUID 조회 (Riot API 요청 + DB 저장 기능 추가)
      */
     public SummonerDto getPuuid(String gameName, String tagLine) {
         String url = "https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/" + gameName + "/" + tagLine;
@@ -47,12 +50,31 @@ public class RecordService {
         // Riot API 요청 및 응답 처리
         ResponseEntity<SummonerDto> response = restTemplate.exchange(url, HttpMethod.GET, entity, SummonerDto.class);
 
-        if (response.getStatusCode() == HttpStatus.OK) {
-            return response.getBody();
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            SummonerDto summonerDto = response.getBody();
+
+            //  DB에서 기존 소환사 조회 (PUUID 기준)
+            Optional<Summoner> existingSummoner = summonerRepository.findByPuuid(summonerDto.getPuuid());
+            if (existingSummoner.isPresent()) {
+                log.info("이미 존재하는 소환사 (PUUID): {}", existingSummoner.get());
+                return summonerDto; // 이미 존재하면 Riot API 응답만 반환
+            }
+
+            // 새로운 소환사 정보를 DB에 저장
+            Summoner newSummoner = new Summoner();
+            newSummoner.setPuuid(summonerDto.getPuuid());
+            newSummoner.setSummonerName(gameName);
+            newSummoner.setSummonerTag(tagLine);
+
+            summonerRepository.save(newSummoner);
+            log.info("새로운 소환사 저장 완료: {}", newSummoner);
+
+            return summonerDto;
         } else {
             throw new RuntimeException("라이엇 API 요청 실패: " + response.getStatusCode());
         }
     }
+
 
     /**
      * 챔피언 숙련도 높은 3개 조회
