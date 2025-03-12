@@ -1,9 +1,14 @@
 package com.lolprojectbackend.record.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.lolprojectbackend.match.entity.Participant;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -31,4 +36,8 @@ public class Summoner {
 
     @Column(name = "ICON")
     private Long icon;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "summoner", cascade = CascadeType.ALL)
+    private List<Participant> participants = new ArrayList<>();
 }
