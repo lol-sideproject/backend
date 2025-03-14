@@ -1,6 +1,7 @@
 package com.lolprojectbackend.record.entity;
 
 import jakarta.persistence.*;
+import java.sql.Date;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,20 +16,23 @@ public class Summoner {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "SUMMONER_ID")
-    private Long summonerId;
+    private Long id;
 
     @Column(name = "PUUID", unique = true, nullable = false)
     private String puuid;
 
-    @Column(name = "SUMMONER_NAME", nullable = false)
-    private String summonerName;
+    @Column(name = "NAME", nullable = false)
+    private String name;
 
-    @Column(name = "SUMMONER_TAG", nullable = false)
-    private String summonerTag;
+    @Column(name = "TAG", nullable = false)
+    private String tag;
 
     @Column(name = "LEVEL")
     private Long level;
 
     @Column(name = "ICON")
     private Long icon;
+
+    @Column(name = "RENEW_TIME")
+    private Date renewTime;
 }

@@ -63,8 +63,8 @@ public class RecordService {
             // 새로운 소환사 정보를 DB에 저장
             Summoner newSummoner = new Summoner();
             newSummoner.setPuuid(summonerDto.getPuuid());
-            newSummoner.setSummonerName(gameName);
-            newSummoner.setSummonerTag(tagLine);
+            newSummoner.setName(gameName);
+            newSummoner.setTag(tagLine);
 
             summonerRepository.save(newSummoner);
             log.info("새로운 소환사 저장 완료: {}", newSummoner);
