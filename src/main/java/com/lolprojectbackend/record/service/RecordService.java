@@ -6,8 +6,12 @@ import com.lolprojectbackend.record.dto.InGameInfoDto;
 import com.lolprojectbackend.record.dto.RankDto;
 import com.lolprojectbackend.record.dto.SummonerDto;
 import com.lolprojectbackend.record.dto.SummonerInfoDto;
+import com.lolprojectbackend.record.entity.FlexRank;
+import com.lolprojectbackend.record.entity.SoloRank;
 import com.lolprojectbackend.record.entity.Summoner;
-import com.lolprojectbackend.record.respository.SummonerRepository;
+import com.lolprojectbackend.record.repository.FlexRankRepository;
+import com.lolprojectbackend.record.repository.SoloRankRepository;
+import com.lolprojectbackend.record.repository.SummonerRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +22,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
@@ -32,6 +37,8 @@ public class RecordService {
 
     private final RestTemplate restTemplate;
     private final SummonerRepository summonerRepository;
+    private final SoloRankRepository soloRankRepository;
+    private final FlexRankRepository flexRankRepository;
 
     @Value("${riot.api.key}")
     private String riotApiKey;
@@ -39,12 +46,13 @@ public class RecordService {
     /**
      * PUUID 조회 (Riot API 요청 + DB 저장 기능 추가)
      */
+    @Transactional
     public SummonerDto getPuuid(String gameName, String tagLine) {
         String url = "https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/" + gameName + "/" + tagLine;
 
-        // HTTP 헤더 설정 (API Key 추가)
+        // HTTP 헤더 설정
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-Riot-Token", riotApiKey); // Riot API 키를 헤더에 추가
+        headers.set("X-Riot-Token", riotApiKey);
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         // Riot API 요청 및 응답 처리
@@ -53,25 +61,72 @@ public class RecordService {
         if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
             SummonerDto summonerDto = response.getBody();
 
-            //  DB에서 기존 소환사 조회 (PUUID 기준)
+            // DB에서 기존 소환사 조회 (PUUID 기준)
             Optional<Summoner> existingSummoner = summonerRepository.findByPuuid(summonerDto.getPuuid());
+            Summoner summoner;
             if (existingSummoner.isPresent()) {
-                log.info("이미 존재하는 소환사 (PUUID): {}", existingSummoner.get());
-                return summonerDto; // 이미 존재하면 Riot API 응답만 반환
+                summoner = existingSummoner.get();
+                log.info("이미 존재하는 소환사 (PUUID): {}", summonerDto.getPuuid());
+            } else {
+                // 새로운 소환사 정보를 DB에 저장
+                summoner = new Summoner();
+                summoner.setPuuid(summonerDto.getPuuid());
+                summoner.setName(gameName);
+                summoner.setTag(tagLine);
+
+                summonerRepository.save(summoner);
+                log.info("새로운 소환사 저장 완료: {}", summoner);
             }
 
-            // 새로운 소환사 정보를 DB에 저장
-            Summoner newSummoner = new Summoner();
-            newSummoner.setPuuid(summonerDto.getPuuid());
-            newSummoner.setName(gameName);
-            newSummoner.setTag(tagLine);
+            // PUUID로 Summoner 정보 조회
+            SummonerInfoDto info = getSummonerByPuuid(summoner.getPuuid());
 
-            summonerRepository.save(newSummoner);
-            log.info("새로운 소환사 저장 완료: {}", newSummoner);
+            if (info != null) {
+                // Summoner ID로 랭크 정보 조회 및 저장
+                updateSummonerRank(info.getId(), summoner);
+            }
 
             return summonerDto;
         } else {
             throw new RuntimeException("라이엇 API 요청 실패: " + response.getStatusCode());
+        }
+    }
+
+    /**
+     * Summoner ID로 랭크 정보 조회 및 저장
+     */
+    @Transactional
+    public void updateSummonerRank(String encryptedSummonerId, Summoner summoner) {
+        String url = "https://kr.api.riotgames.com/lol/league/v4/entries/by-summoner/" + encryptedSummonerId;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Riot-Token", riotApiKey);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<RankDto[]> response = restTemplate.exchange(url, HttpMethod.GET, entity, RankDto[].class);
+
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            List<RankDto> rankData = Arrays.asList(response.getBody());
+
+            for (RankDto rank : rankData) {
+                if ("RANKED_SOLO_5x5".equals(rank.getQueueType())) {
+                    SoloRank soloRank = new SoloRank();
+                    soloRank.setSummoner(summoner);
+                    soloRank.setTier(rank.getTier());
+                    soloRank.setRankPosition(rank.getRank());
+                    soloRank.setLeaguePoint((long) rank.getLeaguePoints());
+
+                    soloRankRepository.save(soloRank);
+                } else if ("RANKED_FLEX_SR".equals(rank.getQueueType())) {
+                    FlexRank flexRank = new FlexRank();
+                    flexRank.setSummoner(summoner);
+                    flexRank.setTier(rank.getTier());
+                    flexRank.setRankPosition(rank.getRank());
+                    flexRank.setLeaguePoint((long) rank.getLeaguePoints());
+
+                    flexRankRepository.save(flexRank);
+                }
+            }
         }
     }
 

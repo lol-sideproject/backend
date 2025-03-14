@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "FlexRank")
+@Table(name = "flexrank")
 public class FlexRank {
 
     @Id
@@ -24,9 +24,9 @@ public class FlexRank {
     @Column(name = "tier")
     private String tier;
 
-    @Column(name = "rank")
-    private String rank;
+    @Column(name = "rank_position")
+    private String rankPosition;
 
-    @Column(name = "leaguePoint")
+    @Column(name = "league_point")
     private Long leaguePoint;
 }
