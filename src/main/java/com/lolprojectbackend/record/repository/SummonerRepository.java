@@ -1,4 +1,4 @@
-package com.lolprojectbackend.record.respository;
+package com.lolprojectbackend.record.repository;
 
 import com.lolprojectbackend.record.entity.Summoner;
 import org.springframework.data.jpa.repository.JpaRepository;
