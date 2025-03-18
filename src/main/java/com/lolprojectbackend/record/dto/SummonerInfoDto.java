@@ -9,7 +9,7 @@ public class SummonerInfoDto {
     private String id;  // encryptedSummonerId
     private String accountId;
     private String puuid;
-    private int profileIconId;
+    private Long profileIconId;
     private long revisionDate;
-    private int summonerLevel;
+    private Long summonerLevel;
 }
