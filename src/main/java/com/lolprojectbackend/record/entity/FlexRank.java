@@ -14,7 +14,7 @@ public class FlexRank {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "flexRank_ID")
+    @Column(name = "flexrank_id")
     private Long id;
 
     @ManyToOne

@@ -2,8 +2,10 @@ package com.lolprojectbackend.record.service;
 
 import com.lolprojectbackend.record.dto.ChampionMasteryDto;
 import com.lolprojectbackend.record.dto.ChampionMasteryListDto;
+import com.lolprojectbackend.record.dto.FlexRankDto;
 import com.lolprojectbackend.record.dto.InGameInfoDto;
 import com.lolprojectbackend.record.dto.RankDto;
+import com.lolprojectbackend.record.dto.SoloRankDto;
 import com.lolprojectbackend.record.dto.SummonerDto;
 import com.lolprojectbackend.record.dto.SummonerInfoDto;
 import com.lolprojectbackend.record.entity.FlexRank;
@@ -74,23 +76,29 @@ public class RecordService {
                 summoner.setName(gameName);
                 summoner.setTag(tagLine);
 
+                SummonerInfoDto sid = getSummonerByPuuid(summoner.getPuuid());
+                summoner.setLevel(sid.getSummonerLevel());
+                summoner.setIcon(sid.getProfileIconId());
+
                 summonerRepository.save(summoner);
                 log.info("새로운 소환사 저장 완료: {}", summoner);
             }
 
             // PUUID로 Summoner 정보 조회
-            SummonerInfoDto info = getSummonerByPuuid(summoner.getPuuid());
+//            SummonerInfoDto info = getSummonerByPuuid(summoner.getPuuid());
 
-            if (info != null) {
-                // Summoner ID로 랭크 정보 조회 및 저장
-                updateSummonerRank(info.getId(), summoner);
-            }
+            SoloRank soloRank = soloRankRepository.findBySummoner(summoner).stream().findFirst().orElse(null);
+            FlexRank flexRank = flexRankRepository.findBySummoner(summoner).stream().findFirst().orElse(null);
 
-            return summonerDto;
+            SoloRankDto soloRankDto = soloRank != null ? new SoloRankDto(soloRank.getTier(), soloRank.getRankPosition(), soloRank.getLeaguePoint()) : null;
+            FlexRankDto flexRankDto = flexRank != null ? new FlexRankDto(flexRank.getTier(), flexRank.getRankPosition(), flexRank.getLeaguePoint()) : null;
+
+            return new SummonerDto(summoner.getPuuid(), summoner.getName(), summoner.getTag(), summoner.getLevel(), summoner.getIcon(), summoner.getRenewTime(), soloRankDto, flexRankDto);
         } else {
             throw new RuntimeException("라이엇 API 요청 실패: " + response.getStatusCode());
         }
     }
+
 
     /**
      * Summoner ID로 랭크 정보 조회 및 저장
